@@ -86,24 +86,21 @@ export const GuidelinesViewer: React.FC = () => {
         <pre className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] font-mono text-cyan-300 overflow-x-auto">
 {`{
   "levelNumber": 1,
-  "openedStackCount": 4,
+  "openedStackCount": 8,
   "chipsPerLevel": {
     "1": 10,
     "2": 6,
-    "3": 4
+    "3": 5,
+    "4": 3
   },
-  "dealChipCount": 5,
-  "maxDealChipLevel": 5,
+  "dealChipCount": 8,
+  "maxDealChipLevel": 4,
   "requiredChipScore": 100,
   "chipsPerStackRange": {
-    "min": 3,
-    "max": 8
+    "min": 1,
+    "max": 2
   },
-  "randomSeed": 12345,
-  "mergeScores": {
-    "1": 10, "2": 15, "3": 25, "4": 40, "5": 60,
-    "6": 90, "7": 130, "8": 180, "9": 250, "10": 350
-  }
+  "randomSeed": 1810
 }`}
         </pre>
       </section>

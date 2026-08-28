@@ -94,32 +94,21 @@ The game loads and exports level definitions using the updated JSON payload:
 ```json
 {
   "levelNumber": 1,
-  "openedStackCount": 4,
+  "openedStackCount": 8,
   "chipsPerLevel": {
     "1": 10,
     "2": 6,
-    "3": 4
+    "3": 5,
+    "4": 3
   },
-  "dealChipCount": 5,
-  "maxDealChipLevel": 5,
+  "dealChipCount": 8,
+  "maxDealChipLevel": 4,
   "requiredChipScore": 100,
   "chipsPerStackRange": {
-    "min": 3,
-    "max": 8
+    "min": 1,
+    "max": 2
   },
-  "randomSeed": 12345,
-  "mergeScores": {
-    "1": 10,
-    "2": 15,
-    "3": 25,
-    "4": 40,
-    "5": 60,
-    "6": 90,
-    "7": 130,
-    "8": 180,
-    "9": 250,
-    "10": 350
-  }
+  "randomSeed": 1810
 }
 ```
 

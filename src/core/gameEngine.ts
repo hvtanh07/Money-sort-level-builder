@@ -106,8 +106,7 @@ export function canMove(
  * Awards points and returns any merge events (handles cascades).
  */
 export function processSlotMerges(
-  slot: SlotState,
-  config: LevelConfig
+  slot: SlotState
 ): { slot: SlotState; mergeEvents: MergeEvent[]; totalPoints: number } {
   let modifiedSlot: SlotState = {
     ...slot,
@@ -127,9 +126,8 @@ export function processSlotMerges(
       const allSame = modifiedSlot.coins.every(c => c.level === firstLevel);
 
       if (allSame) {
-        // Calculate points
-        const scoreTable = config.mergeScores || DEFAULT_MERGE_SCORES;
-        const pts = scoreTable[firstLevel.toString()] ?? (firstLevel * 15);
+        // Calculate points based on standard game merge scores
+        const pts = DEFAULT_MERGE_SCORES[firstLevel.toString()] ?? (firstLevel * 15);
         totalPoints += pts;
 
         const nextLevel = Math.min(10, firstLevel + 1);
@@ -165,8 +163,7 @@ export function processSlotMerges(
  * Evaluates all slots on the board for merges and cascades.
  */
 export function processBoardMerges(
-  slots: SlotState[],
-  config: LevelConfig
+  slots: SlotState[]
 ): { updatedSlots: SlotState[]; mergeEvents: MergeEvent[]; pointsEarned: number } {
   let updatedSlots = slots.map(s => ({ ...s, coins: [...s.coins] }));
   const allMergeEvents: MergeEvent[] = [];
@@ -174,7 +171,7 @@ export function processBoardMerges(
 
   for (let i = 0; i < updatedSlots.length; i++) {
     if (!updatedSlots[i].isLocked) {
-      const result = processSlotMerges(updatedSlots[i], config);
+      const result = processSlotMerges(updatedSlots[i]);
       if (result.mergeEvents.length > 0) {
         updatedSlots[i] = result.slot;
         allMergeEvents.push(...result.mergeEvents);
@@ -222,7 +219,7 @@ export function initGameState(config: LevelConfig): GameState {
   const initialSlots = generateLevelBoard(config);
 
   // Check initial merges if any
-  const { updatedSlots, pointsEarned, mergeEvents } = processBoardMerges(initialSlots, config);
+  const { updatedSlots, pointsEarned, mergeEvents } = processBoardMerges(initialSlots);
 
   return {
     config,
@@ -271,7 +268,7 @@ export function executeMove(
   tgtCoins.push(...movedCoins);
 
   // Check for 10-count stack merges on the target slot & board
-  const { updatedSlots, mergeEvents, pointsEarned } = processBoardMerges(newSlots, state.config);
+  const { updatedSlots, mergeEvents, pointsEarned } = processBoardMerges(newSlots);
 
   const newScore = state.score + pointsEarned;
   const isWon = newScore >= state.config.requiredChipScore;

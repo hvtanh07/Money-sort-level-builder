@@ -24,9 +24,9 @@ import {
   Gamepad2
 } from 'lucide-react';
 
-const PRESET_VERSION = 'v9_lvl10_9slots';
+const PRESET_VERSION = 'v10_no_mergeScores';
 const PRESET_VERSION_KEY = 'money_sort_preset_version';
-const STORAGE_KEY = 'money_sort_levels_pack_v9';
+const STORAGE_KEY = 'money_sort_levels_pack_v10';
 
 // Ensures all levels have chipsPerLevel properly populated even if legacy cache exists
 function validateAndHydrateLevels(rawList: unknown[]): LevelConfig[] {
@@ -51,8 +51,7 @@ function validateAndHydrateLevels(rawList: unknown[]): LevelConfig[] {
       maxDealChipLevel: Number(raw.maxDealChipLevel) || defaultLvl.maxDealChipLevel,
       requiredChipScore: Number(raw.requiredChipScore) || defaultLvl.requiredChipScore,
       chipsPerStackRange: (raw.chipsPerStackRange as LevelConfig['chipsPerStackRange']) || defaultLvl.chipsPerStackRange,
-      randomSeed: Number(raw.randomSeed) || defaultLvl.randomSeed,
-      mergeScores: (raw.mergeScores as LevelConfig['mergeScores']) || defaultLvl.mergeScores
+      randomSeed: Number(raw.randomSeed) || defaultLvl.randomSeed
     };
   });
 }

@@ -24,7 +24,6 @@ export interface LevelConfig {
   requiredChipScore: number; // Score to win the level
   chipsPerStackRange: StackRange; // Min & Max stack height allowed per deal batch
   randomSeed: number; // Deterministic random seed
-  mergeScores?: MergeScoreMap; // Optional custom score config
   lockedSlotIndices?: number[]; // Specific slots locked (defaults to slots >= openedStackCount)
   customLayout?: number[][]; // Optional manual preset for all 10 slots
 }

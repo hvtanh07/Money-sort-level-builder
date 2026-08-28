@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LevelConfig, DEFAULT_MERGE_SCORES, TOTAL_SLOTS_COUNT, COIN_THEMES } from '../core/types';
+import { LevelConfig, TOTAL_SLOTS_COUNT, COIN_THEMES } from '../core/types';
 import { PRESET_LEVELS } from '../core/presets';
 import {
   Sliders,
@@ -22,7 +22,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
   onChangeConfig,
   onApplyGenerate,
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'chips' | 'slots' | 'scoring'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'chips' | 'slots'>('general');
 
   // Handle single field change
   const handleChange = <K extends keyof LevelConfig>(key: K, value: LevelConfig[K]) => {
@@ -83,13 +83,6 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
       lockedSlotIndices: newLockedArray,
       openedStackCount: newOpenedCount
     });
-  };
-
-  // Handle Merge Scores change
-  const handleScoreChange = (level: number, points: number) => {
-    const currentScores = { ...(config.mergeScores || DEFAULT_MERGE_SCORES) };
-    currentScores[level.toString()] = points;
-    handleChange('mergeScores', currentScores);
   };
 
   // Load Preset
@@ -184,16 +177,6 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
           }`}
         >
           Slot Locks ({TOTAL_SLOTS_COUNT - lockedIndices.size} Open)
-        </button>
-        <button
-          onClick={() => setActiveTab('scoring')}
-          className={`pb-2 px-3 border-b-2 transition ${
-            activeTab === 'scoring'
-              ? 'border-cyan-400 text-cyan-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          Merge Scores
         </button>
       </div>
 
@@ -439,52 +422,6 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
 
           <div className="text-xs text-slate-400 bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
             Current Opened Slots: <b className="text-emerald-400">{TOTAL_SLOTS_COUNT - lockedIndices.size} / 10</b>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Merge Scoring Table */}
-      {activeTab === 'scoring' && (
-        <div className="space-y-3">
-          <p className="text-xs text-slate-400">
-            Set points awarded when 10 coins of a specific level merge into 2 higher-level coins:
-          </p>
-
-          <div className="grid grid-cols-2 gap-2">
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => {
-              const theme = COIN_THEMES[lvl];
-              const scoreMap = config.mergeScores || DEFAULT_MERGE_SCORES;
-              const currentScore = scoreMap[lvl.toString()] ?? (lvl * 15);
-
-              return (
-                <div
-                  key={lvl}
-                  className="flex items-center justify-between p-2 bg-slate-950/80 rounded-xl border border-slate-800"
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      style={{ backgroundColor: theme.bgColor }}
-                      className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-black text-white"
-                    >
-                      {lvl}
-                    </div>
-                    <span className="text-xs font-bold text-slate-300">Level {lvl}</span>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="1"
-                      max="1000"
-                      value={currentScore}
-                      onChange={(e) => handleScoreChange(lvl, parseInt(e.target.value) || 0)}
-                      className="w-16 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono font-bold text-amber-300 text-right"
-                    />
-                    <span className="text-[10px] text-slate-400">pts</span>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}

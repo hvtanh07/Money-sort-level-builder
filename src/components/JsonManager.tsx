@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LevelConfig, DEFAULT_MERGE_SCORES } from '../core/types';
+import { LevelConfig } from '../core/types';
 import {
   Copy,
   Download,
@@ -36,7 +36,6 @@ export const JsonManager: React.FC<JsonManagerProps> = ({
       requiredChipScore: config.requiredChipScore,
       chipsPerStackRange: config.chipsPerStackRange || { min: 1, max: 2 },
       randomSeed: config.randomSeed,
-      ...(config.mergeScores ? { mergeScores: config.mergeScores } : {}),
       ...(config.lockedSlotIndices ? { lockedSlotIndices: config.lockedSlotIndices } : {})
     };
 
@@ -116,7 +115,6 @@ export const JsonManager: React.FC<JsonManagerProps> = ({
           max: Number(rawRange.max) || 2
         },
         randomSeed: Number(raw.randomSeed) || 12345,
-        mergeScores: (raw.mergeScores as LevelConfig['mergeScores']) || DEFAULT_MERGE_SCORES,
         lockedSlotIndices: Array.isArray(raw.lockedSlotIndices) ? (raw.lockedSlotIndices as number[]) : undefined
       };
 

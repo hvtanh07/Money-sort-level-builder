@@ -1,4 +1,4 @@
-import { LevelConfig, DEFAULT_MERGE_SCORES } from './types';
+import { LevelConfig } from './types';
 
 /**
  * Standard 10 Levels Configuration
@@ -21,8 +21,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 2
     },
-    randomSeed: 1810,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 1810
   },
   {
     levelNumber: 2,
@@ -40,8 +39,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 2
     },
-    randomSeed: 1911,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 1911
   },
   {
     levelNumber: 3,
@@ -60,8 +58,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 2
     },
-    randomSeed: 2012,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 2012
   },
   {
     levelNumber: 4,
@@ -80,8 +77,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 2
     },
-    randomSeed: 2113,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 2113
   },
   {
     levelNumber: 5,
@@ -100,8 +96,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 3
     },
-    randomSeed: 2214,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 2214
   },
   {
     levelNumber: 6,
@@ -120,8 +115,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 3
     },
-    randomSeed: 2315,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 2315
   },
   {
     levelNumber: 7,
@@ -140,8 +134,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 3
     },
-    randomSeed: 2416,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 2416
   },
   {
     levelNumber: 8,
@@ -160,8 +153,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 3
     },
-    randomSeed: 2517,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 2517
   },
   {
     levelNumber: 9,
@@ -180,8 +172,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 3
     },
-    randomSeed: 2318,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 2318
   },
   {
     levelNumber: 10,
@@ -200,8 +191,7 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
       min: 1,
       max: 3
     },
-    randomSeed: 2719,
-    mergeScores: DEFAULT_MERGE_SCORES
+    randomSeed: 2719
   }
 ];
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LevelConfig, DEFAULT_MERGE_SCORES, COIN_THEMES } from '../core/types';
+import { LevelConfig, COIN_THEMES } from '../core/types';
 import { INITIAL_10_LEVELS } from '../core/presets';
 import {
   Table,
@@ -113,8 +113,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
         min: lastLvl.chipsPerStackRange?.min || 1,
         max: lastLvl.chipsPerStackRange?.max || 3
       },
-      randomSeed: Math.floor(Math.random() * 9000) + 1000,
-      mergeScores: DEFAULT_MERGE_SCORES
+      randomSeed: Math.floor(Math.random() * 9000) + 1000
     };
 
     onUpdateLevels([...levels, newLevel]);
@@ -225,8 +224,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
                 min: Number(item.chipsPerStackRange?.min) || 1,
                 max: Number(item.chipsPerStackRange?.max) || 2
               },
-              randomSeed: Number(item.randomSeed) || (1800 + idx * 100),
-              mergeScores: item.mergeScores || DEFAULT_MERGE_SCORES
+              randomSeed: Number(item.randomSeed) || (1800 + idx * 100)
             };
           });
 
