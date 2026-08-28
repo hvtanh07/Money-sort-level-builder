@@ -7,27 +7,43 @@ interface BanknoteStackProps {
   slot: SlotState;
   isSelected: boolean;
   isValidTarget: boolean;
+  isPlaytestMode?: boolean;
   onSelectSlot: (slotIndex: number) => void;
   onToggleLock?: (slotIndex: number) => void;
+  onUnlockInPlaytest?: (slotIndex: number) => void;
 }
 
 export const BanknoteStack: React.FC<BanknoteStackProps> = ({
   slot,
   isSelected,
   isValidTarget,
+  isPlaytestMode = false,
   onSelectSlot,
   onToggleLock,
+  onUnlockInPlaytest,
 }) => {
   const topGroup = !slot.isLocked ? getTopContiguousGroup(slot) : null;
   const isFull = slot.coins.length >= MAX_SLOT_CAPACITY;
   const coinCount = slot.coins.length;
 
+  const handleClick = () => {
+    if (slot.isLocked) {
+      if (isPlaytestMode && onUnlockInPlaytest) {
+        onUnlockInPlaytest(slot.index);
+      } else if (!isPlaytestMode && onToggleLock) {
+        onToggleLock(slot.index);
+      }
+      return;
+    }
+    onSelectSlot(slot.index);
+  };
+
   return (
     <div
-      onClick={() => onSelectSlot(slot.index)}
+      onClick={handleClick}
       className={`relative w-full h-[280px] rounded-2xl p-2 flex flex-col justify-end items-center cursor-pointer transition-all duration-200 select-none ${
         slot.isLocked
-          ? 'bg-slate-800/80 border-2 border-dashed border-slate-600/60 shadow-inner'
+          ? 'bg-slate-800/80 border-2 border-dashed border-slate-600/60 shadow-inner hover:border-slate-500'
           : isSelected
           ? 'bg-sky-950/70 border-2 border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)] scale-[1.02]'
           : isValidTarget
@@ -65,23 +81,35 @@ export const BanknoteStack: React.FC<BanknoteStackProps> = ({
       {/* Locked Slot Display */}
       {slot.isLocked ? (
         <div className="flex flex-col items-center justify-center h-full w-full gap-2 text-slate-400">
-          <div className="w-12 h-12 rounded-2xl bg-slate-700/60 border border-slate-600 flex items-center justify-center shadow-inner">
+          <div className="w-12 h-12 rounded-2xl bg-slate-700/60 border border-slate-600 flex items-center justify-center shadow-inner group-hover:scale-105 transition">
             <Lock className="w-6 h-6 text-slate-300" />
           </div>
           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Locked
           </span>
-          {onToggleLock && (
+          {isPlaytestMode && onUnlockInPlaytest ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onUnlockInPlaytest(slot.index);
+              }}
+              className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-lg shadow transition"
+              title="Unlock this slot for current playtest session only (level config remains 8 slots)"
+            >
+              🔓 Unlock (Playtest)
+            </button>
+          ) : onToggleLock ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onToggleLock(slot.index);
               }}
               className="text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-0.5 rounded transition"
+              title="Toggle slot lock in level configuration"
             >
-              Unlock
+              Unlock (Config)
             </button>
-          )}
+          ) : null}
         </div>
       ) : coinCount === 0 ? (
         /* Empty Slot Tray */

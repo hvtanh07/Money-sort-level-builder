@@ -137,7 +137,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
           <Flame className="w-3 h-3 text-amber-400" /> Quick Presets:
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {PRESET_LEVELS.slice(0, 5).map((preset) => (
+          {PRESET_LEVELS.map((preset) => (
             <button
               key={preset.levelNumber}
               onClick={() => handleLoadPreset(preset)}

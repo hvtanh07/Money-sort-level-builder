@@ -106,9 +106,9 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
       levelNumber: nextNum,
       openedStackCount: Math.min(10, lastLvl.openedStackCount),
       chipsPerLevel: { ...(lastLvl.chipsPerLevel || { "1": 10, "2": 6, "3": 5, "4": 3 }) },
-      dealChipCount: lastLvl.dealChipCount + 2,
+      dealChipCount: lastLvl.dealChipCount + 1,
       maxDealChipLevel: Math.min(10, lastLvl.maxDealChipLevel || 5),
-      requiredChipScore: lastLvl.requiredChipScore + 20,
+      requiredChipScore: lastLvl.requiredChipScore + 50,
       chipsPerStackRange: {
         min: lastLvl.chipsPerStackRange?.min || 1,
         max: lastLvl.chipsPerStackRange?.max || 3

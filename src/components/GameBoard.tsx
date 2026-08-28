@@ -12,7 +12,10 @@ import {
   Layers,
   Volume2,
   VolumeX,
-  AlertCircle
+  AlertCircle,
+  Play,
+  Hammer,
+  Gamepad2
 } from 'lucide-react';
 
 interface GameBoardProps {
@@ -20,7 +23,10 @@ interface GameBoardProps {
   onStateChange: (newState: GameState) => void;
   onRestart: () => void;
   onNextLevel?: () => void;
+  isPlaytestMode?: boolean;
+  onTogglePlaytestMode?: () => void;
   onToggleSlotLock?: (slotIndex: number) => void;
+  onUnlockSlotInPlaytest?: (slotIndex: number) => void;
 }
 
 export const GameBoard: React.FC<GameBoardProps> = ({
@@ -28,7 +34,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   onStateChange,
   onRestart,
   onNextLevel,
+  isPlaytestMode = false,
+  onTogglePlaytestMode,
   onToggleSlotLock,
+  onUnlockSlotInPlaytest,
 }) => {
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [audioMuted, setAudioMuted] = useState<boolean>(false);
@@ -43,6 +52,14 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   // Handle Slot Selection and Moving
   const handleSlotClick = (clickedIndex: number) => {
+    // If in Design Mode, do not play test
+    if (!isPlaytestMode) {
+      sound.playTap();
+      setHintMessage('🛠️ Design Mode: Switch to Playtest Mode to play!');
+      setTimeout(() => setHintMessage(null), 2500);
+      return;
+    }
+
     const clickedSlot = gameState.slots[clickedIndex];
 
     // If no slot is currently selected
@@ -116,6 +133,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   // Handle Deal Action
   const handleDeal = () => {
+    if (!isPlaytestMode) {
+      if (onTogglePlaytestMode) {
+        onTogglePlaytestMode();
+      }
+      return;
+    }
+
     if (gameState.isWon) return;
 
     setDealAnimationActive(true);
@@ -139,6 +163,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
   // Handle Undo
   const handleUndo = () => {
+    if (!isPlaytestMode) return;
     if (gameState.history.length === 0) return;
     const restoredState = undoMove(gameState);
     setSelectedSlotIndex(null);
@@ -161,13 +186,25 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       {/* Top Header HUD */}
       <div className="w-full flex items-center justify-between gap-2 px-2 py-1 mb-2 z-10">
         
-        {/* Level Star Badge */}
-        <div className="flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-amber-400/50 shadow-md">
-          <div className="w-7 h-7 rounded-xl bg-amber-400 flex items-center justify-center font-black text-slate-950 text-sm shadow">
-            ★
+        {/* Level Star Badge & Mode Indicator */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-amber-400/50 shadow-md">
+            <div className="w-7 h-7 rounded-xl bg-amber-400 flex items-center justify-center font-black text-slate-950 text-sm shadow">
+              ★
+            </div>
+            <div className="text-xs font-black text-amber-300 tracking-wide uppercase">
+              LVL {gameState.config.levelNumber}
+            </div>
           </div>
-          <div className="text-xs font-black text-amber-300 tracking-wide uppercase">
-            LVL {gameState.config.levelNumber}
+
+          <div
+            className={`px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1 shadow border ${
+              isPlaytestMode
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50'
+                : 'bg-amber-500/20 text-amber-300 border-amber-400/50'
+            }`}
+          >
+            {isPlaytestMode ? '🎮 PLAYTEST' : '🛠️ PREVIEW (DESIGN)'}
           </div>
         </div>
 
@@ -186,6 +223,30 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
         {/* Action Controls (Sound, Undo, Restart) */}
         <div className="flex items-center gap-1.5">
+          {onTogglePlaytestMode && (
+            <button
+              onClick={onTogglePlaytestMode}
+              className={`text-xs font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition shadow ${
+                isPlaytestMode
+                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/30'
+              }`}
+              title={isPlaytestMode ? 'Switch to Design Mode' : 'Switch to Playtest Mode'}
+            >
+              {isPlaytestMode ? (
+                <>
+                  <Hammer className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Design</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Playtest</span>
+                </>
+              )}
+            </button>
+          )}
+
           <button
             onClick={toggleAudio}
             title={audioMuted ? 'Unmute Audio' : 'Mute Audio'}
@@ -196,7 +257,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
           <button
             onClick={handleUndo}
-            disabled={gameState.history.length === 0}
+            disabled={!isPlaytestMode || gameState.history.length === 0}
             title="Undo Move"
             className="w-8 h-8 rounded-xl bg-slate-900/80 hover:bg-slate-800 disabled:opacity-40 text-slate-200 flex items-center justify-center border border-slate-700 shadow transition relative"
           >
@@ -233,6 +294,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           {gameState.slots.slice(0, 5).map((slot: SlotState) => {
             const isSelected = selectedSlotIndex === slot.index;
             const isValidTarget =
+              isPlaytestMode &&
               selectedSlotIndex !== null &&
               selectedSlotIndex !== slot.index &&
               !slot.isLocked &&
@@ -244,8 +306,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 slot={slot}
                 isSelected={isSelected}
                 isValidTarget={isValidTarget}
+                isPlaytestMode={isPlaytestMode}
                 onSelectSlot={handleSlotClick}
                 onToggleLock={onToggleSlotLock}
+                onUnlockInPlaytest={onUnlockSlotInPlaytest}
               />
             );
           })}
@@ -256,6 +320,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           {gameState.slots.slice(5, 10).map((slot: SlotState) => {
             const isSelected = selectedSlotIndex === slot.index;
             const isValidTarget =
+              isPlaytestMode &&
               selectedSlotIndex !== null &&
               selectedSlotIndex !== slot.index &&
               !slot.isLocked &&
@@ -267,8 +332,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 slot={slot}
                 isSelected={isSelected}
                 isValidTarget={isValidTarget}
+                isPlaytestMode={isPlaytestMode}
                 onSelectSlot={handleSlotClick}
                 onToggleLock={onToggleSlotLock}
+                onUnlockInPlaytest={onUnlockSlotInPlaytest}
               />
             );
           })}
@@ -301,13 +368,26 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         {/* Deal Button */}
         <button
           onClick={handleDeal}
-          disabled={gameState.isWon}
-          className={`w-full max-w-sm py-4 px-8 rounded-2xl bg-gradient-to-t from-emerald-600 via-emerald-500 to-green-400 hover:from-emerald-500 hover:to-green-300 active:translate-y-1 text-white font-black text-2xl tracking-wider uppercase border-b-4 border-emerald-800 shadow-3d flex items-center justify-center gap-3 transition-all ${
+          disabled={isPlaytestMode && gameState.isWon}
+          className={`w-full max-w-sm py-4 px-8 rounded-2xl bg-gradient-to-t ${
+            isPlaytestMode
+              ? 'from-emerald-600 via-emerald-500 to-green-400 hover:from-emerald-500 hover:to-green-300 border-emerald-800'
+              : 'from-blue-600 via-sky-500 to-cyan-400 hover:from-blue-500 hover:to-cyan-300 border-blue-800'
+          } active:translate-y-1 text-white font-black text-xl tracking-wider uppercase border-b-4 shadow-3d flex items-center justify-center gap-3 transition-all ${
             dealAnimationActive ? 'scale-95' : 'hover:scale-[1.02]'
           } disabled:opacity-50`}
         >
-          <Layers className="w-7 h-7 text-emerald-100" />
-          <span>DEAL (+{gameState.config.dealChipCount})</span>
+          {isPlaytestMode ? (
+            <>
+              <Layers className="w-7 h-7 text-emerald-100" />
+              <span>DEAL (+{gameState.config.dealChipCount})</span>
+            </>
+          ) : (
+            <>
+              <Gamepad2 className="w-7 h-7 text-cyan-100" />
+              <span>START PLAYTEST</span>
+            </>
+          )}
         </button>
 
         {/* Quick Footer Stats */}

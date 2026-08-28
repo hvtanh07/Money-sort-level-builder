@@ -19,10 +19,14 @@ import {
   RotateCcw,
   Table,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Hammer,
+  Gamepad2
 } from 'lucide-react';
 
-const STORAGE_KEY = 'money_sort_levels_pack_v3';
+const PRESET_VERSION = 'v9_lvl10_9slots';
+const PRESET_VERSION_KEY = 'money_sort_preset_version';
+const STORAGE_KEY = 'money_sort_levels_pack_v9';
 
 // Ensures all levels have chipsPerLevel properly populated even if legacy cache exists
 function validateAndHydrateLevels(rawList: unknown[]): LevelConfig[] {
@@ -54,13 +58,22 @@ function validateAndHydrateLevels(rawList: unknown[]): LevelConfig[] {
 }
 
 export const App: React.FC = () => {
-  // Load saved levels or default to INITIAL_10_LEVELS
+  // Mode state: 'design' vs 'playtest'
+  const [appMode, setAppMode] = useState<'design' | 'playtest'>('design');
+
+  // Load saved levels or default to INITIAL_10_LEVELS with cache busting
   const [levels, setLevels] = useState<LevelConfig[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return validateAndHydrateLevels(parsed);
+      const savedVer = localStorage.getItem(PRESET_VERSION_KEY);
+      if (savedVer === PRESET_VERSION) {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return validateAndHydrateLevels(parsed);
+        }
+      } else {
+        localStorage.setItem(PRESET_VERSION_KEY, PRESET_VERSION);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_10_LEVELS));
       }
     } catch {
       // Fallback
@@ -166,8 +179,8 @@ export const App: React.FC = () => {
     }));
   };
 
-  // Toggle Slot Lock from Board or Config
-  const handleToggleSlotLock = (slotIndex: number) => {
+  // Toggle Slot Lock in Design Mode (updates level configuration)
+  const handleToggleSlotLockConfig = (slotIndex: number) => {
     const currentLocked = new Set<number>(
       config.lockedSlotIndices ?? 
       Array.from({ length: 10 - config.openedStackCount }, (_, i) => config.openedStackCount + i)
@@ -189,6 +202,14 @@ export const App: React.FC = () => {
     handleRegenerate(updated);
   };
 
+  // Unlock Slot in Playtest Mode (only affects runtime session, does NOT alter level config)
+  const handleUnlockSlotInPlaytest = (slotIndex: number) => {
+    setGameState(prev => ({
+      ...prev,
+      slots: prev.slots.map(s => (s.index === slotIndex ? { ...s, isLocked: false } : s))
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-game">
       
@@ -208,6 +229,34 @@ export const App: React.FC = () => {
               Visual Designer, Multi-Level Table & Playtester
             </p>
           </div>
+        </div>
+
+        {/* Mode Switcher: Design Mode vs Playtest Mode */}
+        <div className="flex items-center bg-slate-950 p-1 rounded-2xl border border-slate-800 shadow-inner">
+          <button
+            onClick={() => setAppMode('design')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition ${
+              appMode === 'design'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Design Mode: Edit levels, parameters, and layouts"
+          >
+            <Hammer className="w-3.5 h-3.5" />
+            <span>Design Mode</span>
+          </button>
+          <button
+            onClick={() => setAppMode('playtest')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition ${
+              appMode === 'playtest'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+            title="Playtest Mode: Play and test game mechanics"
+          >
+            <Gamepad2 className="w-3.5 h-3.5" />
+            <span>Playtest Mode</span>
+          </button>
         </div>
 
         {/* Level Quick Selector */}
@@ -279,7 +328,10 @@ export const App: React.FC = () => {
               onStateChange={setGameState}
               onRestart={() => handleRegenerate(config)}
               onNextLevel={() => handleStepLevel(1)}
-              onToggleSlotLock={handleToggleSlotLock}
+              isPlaytestMode={appMode === 'playtest'}
+              onTogglePlaytestMode={() => setAppMode(prev => prev === 'design' ? 'playtest' : 'design')}
+              onToggleSlotLock={handleToggleSlotLockConfig}
+              onUnlockSlotInPlaytest={handleUnlockSlotInPlaytest}
             />
           </div>
         )}
