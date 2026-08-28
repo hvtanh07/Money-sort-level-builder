@@ -40,17 +40,21 @@ npm run build
   - Progress bar and victory modal with confetti celebration.
 
 - **Level Config Editor**:
-  - Live sliders and numerical inputs for all parameters: `levelNumber`, `openedStackCount`, `colorCount`, `initialChipCount`, `dealChipCount`, `dealMaxChipCount`, `requiredChipScore`, `chipsPerStackRange`, `randomSeed`.
+  - Live parameter controls: `levelNumber`, `openedStackCount`, `chipsPerLevel`, `dealChipCount`, `maxDealChipLevel`, `requiredChipScore`, `chipsPerStackRange`, `randomSeed`.
   - Visual 5x2 slot lock/unlock toggles.
   - Customizable Merge Score table (Level 1 to 10).
-  - Quick presets (Level 1 to Level 5).
+  - Quick presets (Level 1 to Level 10).
+
+- **Multi-Level Table Manager**:
+  - Spreadsheet table view to manage, edit, and playtest all levels in one place.
+  - In-place cell editing, CSV import/export, and JSON import/export.
 
 - **Manual Slot Customizer**:
   - Fine-grained inspection of individual slot stacks.
   - Add, remove, reorder banknotes per slot.
 
 - **JSON Import / Export**:
-  - Exact JSON format specified in game requirements.
+  - Exact JSON format with `chipsPerLevel` and `maxDealChipLevel`.
   - Copy to clipboard, download `.json`, import existing JSON files.
 
 - **AI & Developer Guidelines**:

@@ -2,16 +2,20 @@ import { LevelConfig, DEFAULT_MERGE_SCORES } from './types';
 
 /**
  * Standard 10 Levels Configuration
- * Exact match from Level Design Specification Table
+ * Configured with chipsPerLevel map
  */
 export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 1,
     openedStackCount: 6,
-    colorCount: 4,
-    initialChipCount: 24,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 6,
+      "3": 5,
+      "4": 3
+    },
     dealChipCount: 10,
-    dealMaxChipCount: 2,
+    maxDealChipLevel: 4,
     requiredChipScore: 100,
     chipsPerStackRange: {
       min: 1,
@@ -23,10 +27,15 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 2,
     openedStackCount: 7,
-    colorCount: 5,
-    initialChipCount: 26,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 6,
+      "3": 4,
+      "4": 3,
+      "5": 3
+    },
     dealChipCount: 9,
-    dealMaxChipCount: 2,
+    maxDealChipLevel: 5,
     requiredChipScore: 150,
     chipsPerStackRange: {
       min: 1,
@@ -38,10 +47,16 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 3,
     openedStackCount: 8,
-    colorCount: 6,
-    initialChipCount: 28,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 5,
+      "3": 5,
+      "4": 3,
+      "5": 3,
+      "6": 2
+    },
     dealChipCount: 10,
-    dealMaxChipCount: 2,
+    maxDealChipLevel: 6,
     requiredChipScore: 150,
     chipsPerStackRange: {
       min: 1,
@@ -53,10 +68,17 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 4,
     openedStackCount: 8,
-    colorCount: 7,
-    initialChipCount: 30,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 5,
+      "3": 4,
+      "4": 4,
+      "5": 3,
+      "6": 2,
+      "7": 2
+    },
     dealChipCount: 11,
-    dealMaxChipCount: 2,
+    maxDealChipLevel: 7,
     requiredChipScore: 150,
     chipsPerStackRange: {
       min: 1,
@@ -68,10 +90,18 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 5,
     openedStackCount: 9,
-    colorCount: 8,
-    initialChipCount: 32,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 5,
+      "3": 4,
+      "4": 4,
+      "5": 3,
+      "6": 2,
+      "7": 2,
+      "8": 2
+    },
     dealChipCount: 12,
-    dealMaxChipCount: 3,
+    maxDealChipLevel: 8,
     requiredChipScore: 150,
     chipsPerStackRange: {
       min: 1,
@@ -83,10 +113,19 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 6,
     openedStackCount: 9,
-    colorCount: 9,
-    initialChipCount: 34,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 5,
+      "3": 4,
+      "4": 4,
+      "5": 3,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 1
+    },
     dealChipCount: 13,
-    dealMaxChipCount: 3,
+    maxDealChipLevel: 9,
     requiredChipScore: 150,
     chipsPerStackRange: {
       min: 1,
@@ -98,10 +137,20 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 7,
     openedStackCount: 9,
-    colorCount: 10,
-    initialChipCount: 36,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 5,
+      "3": 4,
+      "4": 4,
+      "5": 3,
+      "6": 3,
+      "7": 2,
+      "8": 2,
+      "9": 2,
+      "10": 1
+    },
     dealChipCount: 20,
-    dealMaxChipCount: 3,
+    maxDealChipLevel: 10,
     requiredChipScore: 180,
     chipsPerStackRange: {
       min: 1,
@@ -113,10 +162,20 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 8,
     openedStackCount: 9,
-    colorCount: 10,
-    initialChipCount: 38,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 6,
+      "3": 4,
+      "4": 4,
+      "5": 3,
+      "6": 3,
+      "7": 3,
+      "8": 2,
+      "9": 2,
+      "10": 1
+    },
     dealChipCount: 25,
-    dealMaxChipCount: 3,
+    maxDealChipLevel: 10,
     requiredChipScore: 200,
     chipsPerStackRange: {
       min: 1,
@@ -128,10 +187,20 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 9,
     openedStackCount: 9,
-    colorCount: 10,
-    initialChipCount: 40,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 6,
+      "3": 5,
+      "4": 4,
+      "5": 4,
+      "6": 3,
+      "7": 3,
+      "8": 2,
+      "9": 2,
+      "10": 1
+    },
     dealChipCount: 28,
-    dealMaxChipCount: 3,
+    maxDealChipLevel: 10,
     requiredChipScore: 220,
     chipsPerStackRange: {
       min: 1,
@@ -143,10 +212,20 @@ export const INITIAL_10_LEVELS: LevelConfig[] = [
   {
     levelNumber: 10,
     openedStackCount: 9,
-    colorCount: 10,
-    initialChipCount: 42,
+    chipsPerLevel: {
+      "1": 10,
+      "2": 6,
+      "3": 5,
+      "4": 5,
+      "5": 4,
+      "6": 3,
+      "7": 3,
+      "8": 3,
+      "9": 2,
+      "10": 1
+    },
     dealChipCount: 30,
-    dealMaxChipCount: 3,
+    maxDealChipLevel: 10,
     requiredChipScore: 240,
     chipsPerStackRange: {
       min: 1,

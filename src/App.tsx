@@ -22,7 +22,36 @@ import {
   Minimize2
 } from 'lucide-react';
 
-const STORAGE_KEY = 'money_sort_levels_pack_v1';
+const STORAGE_KEY = 'money_sort_levels_pack_v3';
+
+// Ensures all levels have chipsPerLevel properly populated even if legacy cache exists
+function validateAndHydrateLevels(rawList: unknown[]): LevelConfig[] {
+  if (!Array.isArray(rawList) || rawList.length === 0) {
+    return INITIAL_10_LEVELS;
+  }
+
+  return rawList.map((item: unknown, idx: number) => {
+    const raw = (item || {}) as Record<string, unknown>;
+    const defaultLvl = INITIAL_10_LEVELS[idx] || INITIAL_10_LEVELS[INITIAL_10_LEVELS.length - 1];
+
+    let chipsMap = raw.chipsPerLevel as Record<string, number> | undefined;
+    if (!chipsMap || typeof chipsMap !== 'object' || Object.keys(chipsMap).length === 0) {
+      chipsMap = defaultLvl.chipsPerLevel;
+    }
+
+    return {
+      levelNumber: Number(raw.levelNumber) || idx + 1,
+      openedStackCount: Number(raw.openedStackCount) || defaultLvl.openedStackCount,
+      chipsPerLevel: chipsMap,
+      dealChipCount: Number(raw.dealChipCount) || defaultLvl.dealChipCount,
+      maxDealChipLevel: Number(raw.maxDealChipLevel) || defaultLvl.maxDealChipLevel,
+      requiredChipScore: Number(raw.requiredChipScore) || defaultLvl.requiredChipScore,
+      chipsPerStackRange: (raw.chipsPerStackRange as LevelConfig['chipsPerStackRange']) || defaultLvl.chipsPerStackRange,
+      randomSeed: Number(raw.randomSeed) || defaultLvl.randomSeed,
+      mergeScores: (raw.mergeScores as LevelConfig['mergeScores']) || defaultLvl.mergeScores
+    };
+  });
+}
 
 export const App: React.FC = () => {
   // Load saved levels or default to INITIAL_10_LEVELS
@@ -31,9 +60,7 @@ export const App: React.FC = () => {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
+        return validateAndHydrateLevels(parsed);
       }
     } catch {
       // Fallback
@@ -91,15 +118,16 @@ export const App: React.FC = () => {
 
   // Update all levels from LevelTableManager
   const handleUpdateLevels = (newLevels: LevelConfig[]) => {
-    setLevels(newLevels);
+    const validated = validateAndHydrateLevels(newLevels);
+    setLevels(validated);
     // If current level was modified, update active config
-    const match = newLevels.find(l => l.levelNumber === config.levelNumber);
+    const match = validated.find(l => l.levelNumber === config.levelNumber);
     if (match) {
       setConfig(match);
       handleRegenerate(match);
-    } else if (newLevels.length > 0) {
-      setConfig(newLevels[0]);
-      handleRegenerate(newLevels[0]);
+    } else if (validated.length > 0) {
+      setConfig(validated[0]);
+      handleRegenerate(validated[0]);
     }
   };
 

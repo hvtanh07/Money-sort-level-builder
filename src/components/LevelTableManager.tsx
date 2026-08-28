@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LevelConfig, DEFAULT_MERGE_SCORES } from '../core/types';
+import { LevelConfig, DEFAULT_MERGE_SCORES, COIN_THEMES } from '../core/types';
 import { INITIAL_10_LEVELS } from '../core/presets';
 import {
   Table,
@@ -15,7 +15,9 @@ import {
   FileSpreadsheet,
   Layers,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Edit3,
+  X
 } from 'lucide-react';
 
 interface LevelTableManagerProps {
@@ -32,6 +34,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
   onUpdateLevels,
 }) => {
   const [notification, setNotification] = useState<string | null>(null);
+  const [editingChipsLevelIdx, setEditingChipsLevelIdx] = useState<number | null>(null);
 
   const showToast = (msg: string) => {
     setNotification(msg);
@@ -78,6 +81,22 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
     onUpdateLevels(updated);
   };
 
+  // Handle ChipsPerLevel edit for modal
+  const handleChipsCountChange = (levelIdx: number, coinLvl: number, count: number) => {
+    const updated = levels.map((lvl, i) => {
+      if (i !== levelIdx) return lvl;
+      const current = { ...(lvl.chipsPerLevel || {}) };
+      const valid = Math.max(0, count);
+      if (valid === 0) {
+        delete current[coinLvl.toString()];
+      } else {
+        current[coinLvl.toString()] = valid;
+      }
+      return { ...lvl, chipsPerLevel: current };
+    });
+    onUpdateLevels(updated);
+  };
+
   // Add a new level
   const handleAddLevel = () => {
     const nextNum = levels.length + 1;
@@ -86,10 +105,9 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
     const newLevel: LevelConfig = {
       levelNumber: nextNum,
       openedStackCount: Math.min(10, lastLvl.openedStackCount),
-      colorCount: Math.min(10, lastLvl.colorCount),
-      initialChipCount: lastLvl.initialChipCount + 2,
+      chipsPerLevel: { ...(lastLvl.chipsPerLevel || { "1": 10, "2": 6, "3": 5, "4": 3 }) },
       dealChipCount: lastLvl.dealChipCount + 2,
-      dealMaxChipCount: lastLvl.dealMaxChipCount,
+      maxDealChipLevel: Math.min(10, lastLvl.maxDealChipLevel || 5),
       requiredChipScore: lastLvl.requiredChipScore + 20,
       chipsPerStackRange: {
         min: lastLvl.chipsPerStackRange?.min || 1,
@@ -108,6 +126,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
     const target = levels[index];
     const newLvl: LevelConfig = {
       ...target,
+      chipsPerLevel: { ...(target.chipsPerLevel || {}) },
       levelNumber: levels.length + 1,
       randomSeed: Math.floor(Math.random() * 9000) + 1000
     };
@@ -185,21 +204,31 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
         const text = ev.target?.result as string;
         const parsed = JSON.parse(text);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const validated: LevelConfig[] = parsed.map((item, idx) => ({
-            levelNumber: idx + 1,
-            openedStackCount: Number(item.openedStackCount) || 8,
-            colorCount: Number(item.colorCount) || 4,
-            initialChipCount: Number(item.initialChipCount) || 24,
-            dealChipCount: Number(item.dealChipCount) || 10,
-            dealMaxChipCount: Number(item.dealMaxChipCount) || 2,
-            requiredChipScore: Number(item.requiredChipScore) || 100,
-            chipsPerStackRange: {
-              min: Number(item.chipsPerStackRange?.min) || 1,
-              max: Number(item.chipsPerStackRange?.max) || 2
-            },
-            randomSeed: Number(item.randomSeed) || (1800 + idx * 100),
-            mergeScores: item.mergeScores || DEFAULT_MERGE_SCORES
-          }));
+          const validated: LevelConfig[] = parsed.map((item, idx) => {
+            let chipsMap: Record<string, number> = { "1": 10 };
+            if (item.chipsPerLevel && typeof item.chipsPerLevel === 'object') {
+              chipsMap = {};
+              for (const [k, v] of Object.entries(item.chipsPerLevel as Record<string, unknown>)) {
+                const count = Number(v);
+                if (!isNaN(count) && count > 0) chipsMap[k] = count;
+              }
+            }
+
+            return {
+              levelNumber: idx + 1,
+              openedStackCount: Number(item.openedStackCount) || 8,
+              chipsPerLevel: chipsMap,
+              dealChipCount: Number(item.dealChipCount) || 10,
+              maxDealChipLevel: Math.min(10, Math.max(1, Number(item.maxDealChipLevel) || 5)),
+              requiredChipScore: Number(item.requiredChipScore) || 100,
+              chipsPerStackRange: {
+                min: Number(item.chipsPerStackRange?.min) || 1,
+                max: Number(item.chipsPerStackRange?.max) || 2
+              },
+              randomSeed: Number(item.randomSeed) || (1800 + idx * 100),
+              mergeScores: item.mergeScores || DEFAULT_MERGE_SCORES
+            };
+          });
 
           onUpdateLevels(validated);
           onSelectLevel(validated[0]);
@@ -219,26 +248,31 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
     const headers = [
       'Level',
       'Open slots',
-      'Colors',
-      'Initial chips',
+      'Chips Per Level (JSON)',
+      'Total Chips',
       'Deal chips',
+      'Max Deal Level',
       'Required score',
       'Chips/stack min',
       'Chips/stack max',
       'Random Seed'
     ];
 
-    const rows = levels.map((lvl) => [
-      lvl.levelNumber,
-      lvl.openedStackCount,
-      lvl.colorCount,
-      lvl.initialChipCount,
-      lvl.dealChipCount,
-      lvl.requiredChipScore,
-      lvl.chipsPerStackRange?.min || 1,
-      lvl.chipsPerStackRange?.max || 2,
-      lvl.randomSeed
-    ]);
+    const rows = levels.map((lvl) => {
+      const totalChips = Object.values(lvl.chipsPerLevel || {}).reduce((a, b) => a + (b || 0), 0);
+      return [
+        lvl.levelNumber,
+        lvl.openedStackCount,
+        `"${JSON.stringify(lvl.chipsPerLevel || {}).replace(/"/g, '""')}"`,
+        totalChips,
+        lvl.dealChipCount,
+        lvl.maxDealChipLevel || 5,
+        lvl.requiredChipScore,
+        lvl.chipsPerStackRange?.min || 1,
+        lvl.chipsPerStackRange?.max || 2,
+        lvl.randomSeed
+      ];
+    });
 
     const csvContent = [
       headers.join(','),
@@ -255,8 +289,10 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
     showToast('Exported levels to CSV!');
   };
 
+  const editingLevel = editingChipsLevelIdx !== null ? levels[editingChipsLevelIdx] : null;
+
   return (
-    <div className="flex flex-col h-full bg-slate-900/95 border border-slate-700/80 rounded-2xl p-4 text-slate-200 shadow-xl overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-900/95 border border-slate-700/80 rounded-2xl p-4 text-slate-200 shadow-xl overflow-hidden relative">
       
       {/* Header & Controls Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800 mb-3">
@@ -295,7 +331,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
             <Download className="w-3.5 h-3.5" /> JSON
           </button>
 
-          <label className="text-xs px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold flex items-center gap-1 cursor-pointer transition">
+          <label className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 font-bold flex items-center gap-1 cursor-pointer transition">
             <Upload className="w-3.5 h-3.5" /> Import
             <input
               type="file"
@@ -331,9 +367,9 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
             <tr>
               <th className="py-2.5 px-3">Level</th>
               <th className="py-2.5 px-2 text-center">Open Slots</th>
-              <th className="py-2.5 px-2 text-center">Colors</th>
-              <th className="py-2.5 px-2 text-center">Initial Chips</th>
+              <th className="py-2.5 px-3 text-center">Chips Per Level</th>
               <th className="py-2.5 px-2 text-center">Deal Chips</th>
+              <th className="py-2.5 px-2 text-center">Max Deal Lvl</th>
               <th className="py-2.5 px-2 text-center">Required Score</th>
               <th className="py-2.5 px-2 text-center">Chips/Stack</th>
               <th className="py-2.5 px-2 text-center">Random Seed</th>
@@ -345,6 +381,9 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
           <tbody className="divide-y divide-slate-800/80 font-medium text-slate-300">
             {levels.map((lvl, index) => {
               const isActive = lvl.levelNumber === currentLevelNumber;
+              const chipsMap = lvl.chipsPerLevel || {};
+              const totalChips = Object.values(chipsMap).reduce((a, b) => a + (b || 0), 0);
+              const colorTiers = Object.keys(chipsMap).length;
 
               return (
                 <tr
@@ -385,36 +424,20 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
                       onChange={(e) =>
                         handleCellChange(index, 'openedStackCount', parseInt(e.target.value) || 1)
                       }
-                      className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-bold text-slate-200 focus:border-cyan-400 focus:outline-none"
+                      className="w-11 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center font-bold text-slate-200 focus:border-cyan-400 focus:outline-none"
                     />
                   </td>
 
-                  {/* Colors */}
-                  <td className="py-2 px-2 text-center">
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={lvl.colorCount}
-                      onChange={(e) =>
-                        handleCellChange(index, 'colorCount', parseInt(e.target.value) || 1)
-                      }
-                      className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-bold text-cyan-300 focus:border-cyan-400 focus:outline-none"
-                    />
-                  </td>
-
-                  {/* Initial Chips */}
-                  <td className="py-2 px-2 text-center">
-                    <input
-                      type="number"
-                      min="1"
-                      max="80"
-                      value={lvl.initialChipCount}
-                      onChange={(e) =>
-                        handleCellChange(index, 'initialChipCount', parseInt(e.target.value) || 0)
-                      }
-                      className="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-bold text-emerald-300 focus:border-cyan-400 focus:outline-none"
-                    />
+                  {/* Chips Per Level Badge / Summary */}
+                  <td className="py-2 px-3 text-center">
+                    <button
+                      onClick={() => setEditingChipsLevelIdx(index)}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] font-bold text-cyan-300 transition"
+                      title="Click to edit counts per level"
+                    >
+                      <span>{totalChips} Chips ({colorTiers} Colors)</span>
+                      <Edit3 className="w-3 h-3 text-slate-400" />
+                    </button>
                   </td>
 
                   {/* Deal Chips */}
@@ -427,7 +450,22 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
                       onChange={(e) =>
                         handleCellChange(index, 'dealChipCount', parseInt(e.target.value) || 1)
                       }
-                      className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-bold text-emerald-400 focus:border-cyan-400 focus:outline-none"
+                      className="w-12 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center font-bold text-emerald-400 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </td>
+
+                  {/* Max Deal Level */}
+                  <td className="py-2 px-2 text-center">
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={lvl.maxDealChipLevel || 5}
+                      onChange={(e) =>
+                        handleCellChange(index, 'maxDealChipLevel', Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))
+                      }
+                      className="w-11 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center font-bold text-amber-300 focus:border-cyan-400 focus:outline-none"
+                      title="Max coin level that can spawn on deal"
                     />
                   </td>
 
@@ -442,7 +480,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
                       onChange={(e) =>
                         handleCellChange(index, 'requiredChipScore', parseInt(e.target.value) || 50)
                       }
-                      className="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-bold text-amber-300 focus:border-cyan-400 focus:outline-none"
+                      className="w-14 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center font-bold text-amber-300 focus:border-cyan-400 focus:outline-none"
                     />
                   </td>
 
@@ -457,7 +495,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
                         onChange={(e) =>
                           handleCellChange(index, 'minStack', parseInt(e.target.value) || 1)
                         }
-                        className="w-9 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center text-[11px] font-bold text-slate-200"
+                        className="w-8 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center text-[11px] font-bold text-slate-200"
                         title="Min stack"
                       />
                       <span className="text-slate-500 font-bold">–</span>
@@ -469,7 +507,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
                         onChange={(e) =>
                           handleCellChange(index, 'maxStack', parseInt(e.target.value) || 2)
                         }
-                        className="w-9 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center text-[11px] font-bold text-slate-200"
+                        className="w-8 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center text-[11px] font-bold text-slate-200"
                         title="Max stack"
                       />
                     </div>
@@ -484,7 +522,7 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
                         onChange={(e) =>
                           handleCellChange(index, 'randomSeed', parseInt(e.target.value) || 0)
                         }
-                        className="w-16 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-center font-mono text-[11px] text-cyan-300 focus:border-cyan-400 focus:outline-none"
+                        className="w-14 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center font-mono text-[11px] text-cyan-300 focus:border-cyan-400 focus:outline-none"
                       />
                       <button
                         onClick={() => handleRandomizeRowSeed(index)}
@@ -557,6 +595,76 @@ export const LevelTableManager: React.FC<LevelTableManagerProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Chips Per Level Popup Editor Modal */}
+      {editingChipsLevelIdx !== null && editingLevel && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-lg w-full shadow-2xl animate-deal-pop">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+              <div>
+                <h3 className="text-base font-black text-white">
+                  Level {editingLevel.levelNumber} - Chips Per Level
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Set how many coins of each level appear at start
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingChipsLevelIdx(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 max-h-[340px] overflow-y-auto pr-1 mb-4">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => {
+                const theme = COIN_THEMES[lvl];
+                const count = (editingLevel.chipsPerLevel || {})[lvl.toString()] || 0;
+
+                return (
+                  <div
+                    key={lvl}
+                    className={`flex items-center justify-between p-2 rounded-xl border transition ${
+                      count > 0 ? 'bg-slate-950 border-slate-700' : 'bg-slate-950/40 border-slate-800/60 opacity-60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        style={{ backgroundColor: theme.bgColor }}
+                        className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-black text-white shadow"
+                      >
+                        {lvl}
+                      </div>
+                      <span className="text-xs font-bold text-slate-300">Level {lvl}</span>
+                    </div>
+
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={count}
+                      onChange={(e) =>
+                        handleChipsCountChange(editingChipsLevelIdx, lvl, parseInt(e.target.value) || 0)
+                      }
+                      className="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-bold text-cyan-300 text-center focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                onClick={() => setEditingChipsLevelIdx(null)}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs rounded-xl shadow transition"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer Summary */}
       <div className="flex items-center justify-between pt-3 border-t border-slate-800 mt-2 text-xs text-slate-400">

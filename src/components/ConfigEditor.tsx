@@ -7,7 +7,8 @@ import {
   Sparkles,
   Lock,
   Unlock,
-  Flame
+  Flame,
+  Coins
 } from 'lucide-react';
 
 interface ConfigEditorProps {
@@ -21,7 +22,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
   onChangeConfig,
   onApplyGenerate,
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'scoring' | 'slots'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'chips' | 'slots' | 'scoring'>('general');
 
   // Handle single field change
   const handleChange = <K extends keyof LevelConfig>(key: K, value: LevelConfig[K]) => {
@@ -37,9 +38,21 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
     handleChange('randomSeed', newSeed);
   };
 
+  // Handle Chips Per Level count change
+  const handleChipLevelCountChange = (level: number, count: number) => {
+    const current = { ...(config.chipsPerLevel || {}) };
+    const validCount = Math.max(0, count);
+    if (validCount === 0) {
+      delete current[level.toString()];
+    } else {
+      current[level.toString()] = validCount;
+    }
+    handleChange('chipsPerLevel', current);
+  };
+
   // Handle Stack Range Min/Max
   const handleRangeChange = (type: 'min' | 'max', val: number) => {
-    const current = config.chipsPerStackRange || { min: 3, max: 8 };
+    const current = config.chipsPerStackRange || { min: 1, max: 2 };
     if (type === 'min') {
       const minVal = Math.min(val, current.max);
       handleChange('chipsPerStackRange', { ...current, min: minVal });
@@ -89,6 +102,11 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
     Array.from({ length: TOTAL_SLOTS_COUNT - config.openedStackCount }, (_, i) => config.openedStackCount + i)
   );
 
+  const chipsMap = config.chipsPerLevel || {};
+  const totalInitialChips = Object.values(chipsMap).reduce((a, b) => a + (b || 0), 0);
+  const activeColorCount = Object.keys(chipsMap).length;
+  const maxDealLvl = Math.max(1, Math.min(10, config.maxDealChipLevel || 5));
+
   return (
     <div className="flex flex-col h-full bg-slate-900/95 border border-slate-700/80 rounded-2xl p-4 text-slate-200 overflow-y-auto shadow-xl">
       
@@ -100,7 +118,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
           </div>
           <div>
             <h2 className="text-base font-black text-white">Level Configuration</h2>
-            <p className="text-xs text-slate-400">Design parameters & spawn rules</p>
+            <p className="text-xs text-slate-400">Design parameters & spawn counts</p>
           </div>
         </div>
 
@@ -119,17 +137,17 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
           <Flame className="w-3 h-3 text-amber-400" /> Quick Presets:
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {PRESET_LEVELS.map((preset) => (
+          {PRESET_LEVELS.slice(0, 5).map((preset) => (
             <button
               key={preset.levelNumber}
               onClick={() => handleLoadPreset(preset)}
               className={`text-xs px-2.5 py-1 rounded-lg border font-bold transition ${
-                config.levelNumber === preset.levelNumber && config.colorCount === preset.colorCount
+                config.levelNumber === preset.levelNumber
                   ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-sm'
                   : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
               }`}
             >
-              Level {preset.levelNumber} ({preset.colorCount} Colors)
+              Level {preset.levelNumber}
             </button>
           ))}
         </div>
@@ -145,7 +163,17 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          General Params
+          General
+        </button>
+        <button
+          onClick={() => setActiveTab('chips')}
+          className={`pb-2 px-3 border-b-2 transition ${
+            activeTab === 'chips'
+              ? 'border-cyan-400 text-cyan-300'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Chips Per Level ({totalInitialChips} Total)
         </button>
         <button
           onClick={() => setActiveTab('slots')}
@@ -165,7 +193,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          Merge Scores Table
+          Merge Scores
         </button>
       </div>
 
@@ -211,57 +239,22 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
             </div>
           </div>
 
-          {/* Color Count (1 - 10) */}
-          <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800/80">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs font-bold text-slate-300">
-                Color Count (Levels 1 to {config.colorCount})
-              </span>
-              <span className="text-xs font-black text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">
-                {config.colorCount} Colors
-              </span>
+          {/* Quick Summary of Initial Chips */}
+          <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <Coins className="w-4 h-4 text-amber-400" /> Initial Chips Summary
+              </div>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                {totalInitialChips} total chips across {activeColorCount} active color tiers
+              </div>
             </div>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={config.colorCount}
-              onChange={(e) => handleChange('colorCount', parseInt(e.target.value))}
-              className="w-full accent-cyan-400 cursor-pointer"
-            />
-            {/* Color spectrum preview */}
-            <div className="flex gap-1 mt-1.5">
-              {Array.from({ length: config.colorCount }, (_, i) => i + 1).map((lvl) => (
-                <div
-                  key={lvl}
-                  style={{ backgroundColor: COIN_THEMES[lvl]?.bgColor || '#40c057' }}
-                  className="flex-1 h-3 rounded-sm flex items-center justify-center text-[8px] font-black text-white"
-                  title={`Level ${lvl}`}
-                >
-                  {lvl}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Initial Chip Count */}
-          <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800/80">
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-xs font-bold text-slate-300">
-                Initial Chip Count (At start)
-              </span>
-              <span className="text-xs font-black text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
-                {config.initialChipCount} Coins
-              </span>
-            </div>
-            <input
-              type="range"
-              min="4"
-              max="80"
-              value={config.initialChipCount}
-              onChange={(e) => handleChange('initialChipCount', parseInt(e.target.value))}
-              className="w-full accent-emerald-400 cursor-pointer"
-            />
+            <button
+              onClick={() => setActiveTab('chips')}
+              className="text-xs px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-lg font-bold border border-slate-700 transition"
+            >
+              Edit Counts ➜
+            </button>
           </div>
 
           {/* Deal Parameters */}
@@ -270,32 +263,38 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
               <label className="block text-xs font-bold text-slate-300 mb-1">
                 Deal Chip Count
               </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={config.dealChipCount}
-                  onChange={(e) => handleChange('dealChipCount', parseInt(e.target.value) || 1)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-sm font-bold text-white"
-                />
-              </div>
-              <p className="text-[10px] text-slate-500 mt-1">Total chips added per deal</p>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={config.dealChipCount}
+                onChange={(e) => handleChange('dealChipCount', parseInt(e.target.value) || 1)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-sm font-bold text-white"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">Chips added per deal</p>
             </div>
 
             <div className="bg-slate-950/40 p-3 rounded-xl border border-slate-800/80">
-              <label className="block text-xs font-bold text-slate-300 mb-1">
-                Deal Max Chip Count
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-bold text-slate-300">
+                  Max Deal Level
+                </label>
+                <span
+                  style={{ backgroundColor: COIN_THEMES[maxDealLvl]?.bgColor || '#fab005' }}
+                  className="text-[10px] font-black text-white px-1.5 py-0.2 rounded"
+                >
+                  Lv.{maxDealLvl}
+                </span>
+              </div>
               <input
                 type="number"
                 min="1"
                 max="10"
-                value={config.dealMaxChipCount}
-                onChange={(e) => handleChange('dealMaxChipCount', parseInt(e.target.value) || 1)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-sm font-bold text-white"
+                value={config.maxDealChipLevel || 5}
+                onChange={(e) => handleChange('maxDealChipLevel', Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-sm font-bold text-amber-300"
               />
-              <p className="text-[10px] text-slate-500 mt-1">Max chunk per slot</p>
+              <p className="text-[10px] text-slate-500 mt-1">Max coin level on deal</p>
             </div>
           </div>
 
@@ -306,7 +305,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
                 Chips Per Stack Range (Deal sub-stack size)
               </span>
               <span className="text-xs font-mono text-cyan-300">
-                Min: {config.chipsPerStackRange?.min || 3} - Max: {config.chipsPerStackRange?.max || 8}
+                Min: {config.chipsPerStackRange?.min || 1} - Max: {config.chipsPerStackRange?.max || 2}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2 mt-2">
@@ -316,7 +315,7 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
                   type="number"
                   min="1"
                   max="10"
-                  value={config.chipsPerStackRange?.min || 3}
+                  value={config.chipsPerStackRange?.min || 1}
                   onChange={(e) => handleRangeChange('min', parseInt(e.target.value) || 1)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-sm font-bold text-white"
                 />
@@ -327,8 +326,8 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
                   type="number"
                   min="1"
                   max="10"
-                  value={config.chipsPerStackRange?.max || 8}
-                  onChange={(e) => handleRangeChange('max', parseInt(e.target.value) || 10)}
+                  value={config.chipsPerStackRange?.max || 2}
+                  onChange={(e) => handleRangeChange('max', parseInt(e.target.value) || 2)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-sm font-bold text-white"
                 />
               </div>
@@ -354,6 +353,56 @@ export const ConfigEditor: React.FC<ConfigEditorProps> = ({
               onChange={(e) => handleChange('requiredChipScore', parseInt(e.target.value) || 100)}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-black text-amber-300"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Chips Per Level */}
+      {activeTab === 'chips' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs text-slate-400 pb-1">
+            <span>Set starting chip count for each level (1-10):</span>
+            <span className="font-bold text-emerald-400">Total: {totalInitialChips} Chips</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => {
+              const theme = COIN_THEMES[lvl];
+              const count = chipsMap[lvl.toString()] || 0;
+
+              return (
+                <div
+                  key={lvl}
+                  className={`flex items-center justify-between p-2.5 rounded-xl border transition ${
+                    count > 0
+                      ? 'bg-slate-950/80 border-slate-700'
+                      : 'bg-slate-950/30 border-slate-800/60 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div
+                      style={{ backgroundColor: theme.bgColor }}
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-xs font-black text-white shadow"
+                    >
+                      {lvl}
+                    </div>
+                    <span className="text-xs font-bold text-slate-300">Level {lvl}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="40"
+                      value={count}
+                      onChange={(e) => handleChipLevelCountChange(lvl, parseInt(e.target.value) || 0)}
+                      className="w-14 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-bold text-cyan-300 text-center focus:border-cyan-400 focus:outline-none"
+                    />
+                    <span className="text-[10px] text-slate-500">chips</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

@@ -1,6 +1,13 @@
 /**
  * Deal Engine
  * Handles dealing new coins to the board during gameplay.
+ * 
+ * Logic:
+ * 1. Targeted Completion: Checks board for any coin level with total count > 5 (and < 10).
+ *    If found, selects 1 candidate level and spawns the exact needed coins so its total count equals 10.
+ *    (This targeted logic ignores maxDealChipLevel).
+ * 2. Remainder Coins: The rest of the deal batch (up to dealChipCount) spawns randomly from [1, maxDealChipLevel].
+ * 3. Distribution: Distributes all spawned coins randomly across unlocked slots with available capacity (< 10).
  */
 
 import { LevelConfig, SlotState, CoinData, MAX_SLOT_CAPACITY } from './types';
@@ -10,36 +17,14 @@ import { createUniqueCoin } from './levelGenerator';
 export interface DealResult {
   updatedSlots: SlotState[];
   dealtCoinsCount: number;
-  highestLevelUsed: number;
+  maxLevelUsed: number;
   dealBreakdown: { level: number; count: number }[];
+  targetedLevelUsed?: { level: number; addedCount: number };
   isBoardFull: boolean;
 }
 
 /**
- * Finds the highest coin level currently on the board across unlocked slots.
- */
-export function getHighestLevelOnBoard(slots: SlotState[], defaultColorCount: number): number {
-  let highest = 1;
-  let foundAny = false;
-
-  for (const slot of slots) {
-    if (slot.isLocked) continue;
-    for (const coin of slot.coins) {
-      foundAny = true;
-      if (coin.level > highest) {
-        highest = coin.level;
-      }
-    }
-  }
-
-  return foundAny ? highest : Math.max(1, defaultColorCount);
-}
-
-/**
  * Executes a Deal action.
- * 1. Checks highest coin level in the level -> Spawns at least 2 coins of that level.
- * 2. Spawns remaining coins (up to dealChipCount) randomly between 1 and max level.
- * 3. Distributes spawned coins to random unlocked slots with remaining capacity.
  */
 export function executeDeal(
   slots: SlotState[],
@@ -57,30 +42,54 @@ export function executeDeal(
     return {
       updatedSlots: deepClonedSlots,
       dealtCoinsCount: 0,
-      highestLevelUsed: 1,
+      maxLevelUsed: 1,
       dealBreakdown: [],
       isBoardFull: true
     };
   }
 
-  // 1. Find current highest level
-  const highestLevel = getHighestLevelOnBoard(deepClonedSlots, config.colorCount);
-
-  // 2. Generate deal coins
-  const dealCoinsToSpawn: number[] = [];
-
-  // Guarantee at least 2 coins of highest level
-  const guaranteedCount = Math.min(2, config.dealChipCount);
-  for (let i = 0; i < guaranteedCount; i++) {
-    dealCoinsToSpawn.push(highestLevel);
+  // 1. Count coins of each level across all unlocked slots
+  const countByLevel = new Map<number, number>();
+  for (const slot of unlockedSlots) {
+    for (const coin of slot.coins) {
+      countByLevel.set(coin.level, (countByLevel.get(coin.level) || 0) + 1);
+    }
   }
 
-  // Remainder coins
-  const remainingCount = Math.max(0, config.dealChipCount - guaranteedCount);
-  const maxSpectrum = Math.min(10, Math.max(config.colorCount, highestLevel));
+  // Find candidate levels where total count on board > 5 and < 10 (or has unmerged stack > 5)
+  const candidateLevels: { level: number; needed: number }[] = [];
+  for (const [lvl, count] of countByLevel.entries()) {
+    const unmergedCount = count % 10;
+    if (count > 5 && count < 10) {
+      candidateLevels.push({ level: lvl, needed: 10 - count });
+    } else if (unmergedCount > 5) {
+      candidateLevels.push({ level: lvl, needed: 10 - unmergedCount });
+    }
+  }
 
-  for (let i = 0; i < remainingCount; i++) {
-    const lvl = prng.nextInt(1, maxSpectrum);
+  const dealCoinsToSpawn: number[] = [];
+  let targetedInfo: { level: number; addedCount: number } | undefined = undefined;
+
+  // If candidate levels exist, select 1 and generate exact chips to reach 10 (ignoring maxDealChipLevel)
+  if (candidateLevels.length > 0) {
+    const chosenCandidate = prng.choice(candidateLevels);
+    for (let i = 0; i < chosenCandidate.needed; i++) {
+      dealCoinsToSpawn.push(chosenCandidate.level);
+    }
+    targetedInfo = {
+      level: chosenCandidate.level,
+      addedCount: chosenCandidate.needed
+    };
+  }
+
+  // 2. Generate remainder coins from [1, maxDealChipLevel]
+  const activeLevels = Object.keys(config.chipsPerLevel || {}).map(Number).filter(n => n >= 1);
+  const highestActive = activeLevels.length > 0 ? Math.max(...activeLevels) : 5;
+  const maxAllowedLevel = Math.max(1, Math.min(10, config.maxDealChipLevel || highestActive));
+  const remainingDealCount = Math.max(0, config.dealChipCount - dealCoinsToSpawn.length);
+
+  for (let i = 0; i < remainingDealCount; i++) {
+    const lvl = prng.nextInt(1, maxAllowedLevel);
     dealCoinsToSpawn.push(lvl);
   }
 
@@ -121,8 +130,9 @@ export function executeDeal(
   return {
     updatedSlots: deepClonedSlots,
     dealtCoinsCount: dealtCount,
-    highestLevelUsed: highestLevel,
+    maxLevelUsed: maxAllowedLevel,
     dealBreakdown: breakdown,
+    targetedLevelUsed: targetedInfo,
     isBoardFull: totalCurrentCoins >= totalCapacity
   };
 }

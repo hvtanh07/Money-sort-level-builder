@@ -11,7 +11,7 @@ Money Sort is a tactile, card/banknote-stacking puzzle game where players organi
 
 ### 1.1 Grid & Slot Architecture
 - **Grid Layout:** 10 slots arranged on a **5 x 2 grid** (5 columns, 2 rows).
-- **Slot Availability:** Configured via `openedStackCount` (e.g. `8` opened slots, `2` locked slots) or an explicit `lockedSlotIndices` array.
+- **Slot Availability:** Configured via `openedStackCount` (e.g. `6` to `9` opened slots, rest locked) or an explicit `lockedSlotIndices` array.
 - **Slot Capacity:** Every slot can hold at most **10 coins/banknotes**.
 - **Coin/Banknote Levels:** Values range from **Level 1 to Level 10**, each mapped to a distinct color palette, name, and visual badge.
 
@@ -52,62 +52,56 @@ A move from `sourceSlot` to `targetSlot` is valid **if and only if**:
 
 ---
 
-## 3. Level Generation Logic (Seeded PRNG)
+## 3. Level Generation Logic (Seeded PRNG & chipsPerLevel)
 
 Level generation is 100% deterministic using the **Mulberry32 PRNG** algorithm driven by `randomSeed`.
 
-### Algorithm Pseudocode:
-```typescript
-function generateLevel(config: LevelConfig) {
-  const prng = new PRNG(config.randomSeed);
-  
-  // 1. Determine locked vs opened slots
-  const lockedIndices = config.lockedSlotIndices ?? [8, 9];
-  const openedSlots = getOpenedSlots(lockedIndices);
-  
-  // 2. Generate initial coin pool
-  const maxColor = clamp(config.colorCount, 1, 10);
-  const coinPool: number[] = [];
-  for (let i = 0; i < config.initialChipCount; i++) {
-    coinPool.push(prng.nextInt(1, maxColor));
+### 3.1 Initial Pool from chipsPerLevel
+- Instead of generic counts, designers define exact counts of coins per level using `chipsPerLevel`:
+  ```json
+  "chipsPerLevel": {
+    "1": 10,
+    "2": 6,
+    "3": 5,
+    "4": 3
   }
-  
-  // 3. Distribute coins across opened slots (capacity <= 10)
-  const slotArrays = distribute(prng.shuffle(coinPool), openedSlots.length, 10);
-  
-  // 4. In-slot grouping with random order:
-  // e.g. [5, 4, 5, 3, 3, 1, 2, 1] -> groups {1:[1,1], 2:[2], 3:[3,3], 4:[4], 5:[5,5]}
-  // Shuffling group order -> [1, 1, 3, 3, 4, 5, 5, 2]
-  for (let i = 0; i < openedSlots.length; i++) {
-    openedSlots[i].coins = groupCoinsByLevelWithRandomOrder(slotArrays[i], prng);
-  }
-}
-```
+  ```
+- The generator creates `rawCoins` matching these exact quantities.
+- Coins are shuffled deterministically with `randomSeed`.
+- Coins are distributed across opened slots (capacity $\le 10$).
+- Coins within each slot are grouped contiguously by level, and the level groups are ordered randomly (e.g., `5,4,5,3,3,1,2,1` $\rightarrow$ `1,1,3,3,4,5,5,2`).
 
 ---
 
-## 4. Deal Chip Logic
+## 4. Deal Chip Logic (Targeted Completion & Spectrum)
 
 When the player clicks the **DEAL** button during gameplay:
-1. **Highest Level Priority:** The engine inspects all coins on the board and identifies the current highest level $H = \max(\text{all board coins})$.
-2. **Guaranteed High-Tier Spawn:** At least **2 coins of level $H$** are spawned first.
-3. **Spectrum Distribution:** The remaining $\max(0, \text{dealChipCount} - 2)$ coins are chosen randomly from $[1, \max(\text{colorCount}, H)]$.
-4. **Placement:** The spawned coins are distributed to random opened slots with available capacity ($< 10$).
+1. **Targeted Completion for Stacks > 5:**
+   - The engine scans the board for any coin level currently having $\text{totalCount} > 5$ (and $< 10$).
+   - If found, it randomly picks 1 candidate level $T$ and spawns exactly $10 - \text{count}$ coins of level $T$ so its total count equals 10.
+   - *Note: This targeted completion ignores `maxDealChipLevel`.*
+2. **Remainder Coins:**
+   - The remaining $\max(0, \text{dealChipCount} - \text{targetedSpawnCount})$ coins are spawned randomly with levels in $[1, \text{maxDealChipLevel}]$.
+3. **Placement:**
+   - The spawned coins are distributed randomly to opened slots with available capacity ($< 10$).
 
 ---
 
 ## 5. Level Config JSON Specification
 
-The game loads and exports level definitions using the following standard JSON payload:
+The game loads and exports level definitions using the updated JSON payload:
 
 ```json
 {
   "levelNumber": 1,
   "openedStackCount": 4,
-  "colorCount": 3,
-  "initialChipCount": 20,
+  "chipsPerLevel": {
+    "1": 10,
+    "2": 6,
+    "3": 4
+  },
   "dealChipCount": 5,
-  "dealMaxChipCount": 2,
+  "maxDealChipLevel": 5,
   "requiredChipScore": 100,
   "chipsPerStackRange": {
     "min": 3,
@@ -129,18 +123,6 @@ The game loads and exports level definitions using the following standard JSON p
 }
 ```
 
-### Field Descriptions:
-- `levelNumber` *(number)*: Sequential level index.
-- `openedStackCount` *(number)*: Total unlocked slots at start (1 to 10).
-- `colorCount` *(number)*: Number of distinct coin tiers (1 to 10) generated at start.
-- `initialChipCount` *(number)*: Total initial banknotes on the board.
-- `dealChipCount` *(number)*: Total banknotes spawned upon clicking Deal.
-- `dealMaxChipCount` *(number)*: Maximum chunk size added per slot during a deal.
-- `requiredChipScore` *(number)*: Points required to win the level.
-- `chipsPerStackRange` *({ min, max })*: Allowed min/max stack range.
-- `randomSeed` *(number)*: Deterministic PRNG seed for identical board generation.
-- `mergeScores` *(object, optional)*: Point table awarded for merging 10 coins of each level.
-
 ---
 
 ## 6. Codebase Structure & File Mapping
@@ -148,18 +130,19 @@ The game loads and exports level definitions using the following standard JSON p
 ```
 src/
 ├── core/
-│   ├── types.ts           # Type definitions, themes, and constants
+│   ├── types.ts           # Type definitions, themes, and chipsPerLevel map
 │   ├── prng.ts            # Mulberry32 32-bit PRNG engine
-│   ├── levelGenerator.ts  # Procedural level generation & in-slot grouping
-│   ├── dealEngine.ts      # Deal logic with highest-level prioritization
+│   ├── levelGenerator.ts  # Procedural level generation with chipsPerLevel & in-slot grouping
+│   ├── dealEngine.ts      # Deal logic with targeted completion (> 5) & maxDealChipLevel
 │   ├── gameEngine.ts      # Move validation, stack merging, undo & scoring
 │   ├── sound.ts           # Web Audio API sound synthesizer
-│   └── presets.ts         # Pre-configured game levels
+│   └── presets.ts         # Pre-configured 10 game levels with chipsPerLevel
 ├── components/
 │   ├── GameBoard.tsx      # Main 5x2 board layout & gameplay controller
 │   ├── BanknoteStack.tsx  # 3D banknote rendering with level badges
-│   ├── ConfigEditor.tsx   # Visual parameter sliders & lock toggles
+│   ├── ConfigEditor.tsx   # Visual parameter sliders & chipsPerLevel count editor
 │   ├── SlotCustomizer.tsx # Manual coin-by-coin stack editor
+│   ├── LevelTableManager.tsx # Multi-level management table with in-place edits & chipsPerLevel modal
 │   ├── JsonManager.tsx    # Live JSON editor, importer & exporter
 │   ├── GuidelinesViewer.tsx # In-app guideline documentation modal
 │   ├── ScorePopup.tsx     # Floating particle merge score awards
@@ -168,18 +151,3 @@ src/
 │   └── index.css          # 3D perspective, animations & Tailwind styles
 └── App.tsx                # Dual-pane application shell
 ```
-
----
-
-## 7. How Future AI Agents Should Extend This Codebase
-
-1. **Adding New Power-Ups (e.g. Shuffle, Hammer, Color Magnet):**
-   - Add new actions in `src/core/gameEngine.ts` taking current `GameState` and returning next `GameState`.
-   - Update `history` array to support full undo.
-
-2. **Porting to Unity (C#) or Godot (GDScript / C#):**
-   - The logic in `src/core/prng.ts`, `src/core/levelGenerator.ts`, `src/core/dealEngine.ts`, and `src/core/gameEngine.ts` is 100% pure functional code with zero browser dependencies.
-   - Copy the algorithms 1:1 into C# classes (`Mulberry32Prng`, `LevelGenerator`, `DealEngine`, `GameManager`).
-
-3. **Writing Automated Solvers / AI Playtesters:**
-   - Use `findAvailableMoves(slots)` in `src/core/gameEngine.ts` to perform Breadth-First Search (BFS) or $A^*$ tree search to calculate optimal play solutions and difficulty ratings.

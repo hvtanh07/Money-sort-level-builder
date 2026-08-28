@@ -11,13 +11,16 @@ export interface MergeScoreMap {
   [level: string]: number; // e.g. "1": 10, "2": 15, ...
 }
 
+export interface ChipsPerLevelMap {
+  [level: string]: number; // e.g. "1": 10, "2": 6, "3": 5, ...
+}
+
 export interface LevelConfig {
   levelNumber: number;
   openedStackCount: number; // How many slots available at start (0 - 10)
-  colorCount: number; // Total coin levels available at start (1 - 10)
-  initialChipCount: number; // Total coins at start
+  chipsPerLevel: ChipsPerLevelMap; // Count of chips for each level at start: { "1": 10, "2": 6, ... }
   dealChipCount: number; // Amount of chips added per deal action
-  dealMaxChipCount: number; // Max chips per deal batch / sub-stack
+  maxDealChipLevel: number; // Maximum coin level that can spawn when dealing (1 - 10)
   requiredChipScore: number; // Score to win the level
   chipsPerStackRange: StackRange; // Min & Max stack height allowed per deal batch
   randomSeed: number; // Deterministic random seed
@@ -61,7 +64,7 @@ export interface GameState {
   slots: SlotState[];
   score: number;
   movesCount: number;
-  dealsRemainingCount: number; // How many deals performed / or total
+  dealsRemainingCount: number;
   dealsUsed: number;
   isWon: boolean;
   isDeadlocked: boolean;

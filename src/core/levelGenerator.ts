@@ -1,6 +1,6 @@
 /**
  * Level Generator Engine
- * Generates reproducible initial board states according to LevelConfig.
+ * Generates reproducible initial board states according to chipsPerLevel and LevelConfig.
  */
 
 import { LevelConfig, SlotState, CoinData, TOTAL_SLOTS_COUNT, MAX_SLOT_CAPACITY } from './types';
@@ -44,6 +44,8 @@ export function groupCoinsByLevelWithRandomOrder(coins: number[], prng: PRNG): n
 
 /**
  * Generates the full initial board state for a given LevelConfig.
+ * Uses chipsPerLevel map to spawn the exact counts of each coin level,
+ * distributes them randomly across opened slots, and groups by level within each slot.
  */
 export function generateLevelBoard(config: LevelConfig): SlotState[] {
   const prng = new PRNG(config.randomSeed);
@@ -78,18 +80,26 @@ export function generateLevelBoard(config: LevelConfig): SlotState[] {
   const unlockedSlots = slots.filter(s => !s.isLocked);
   if (unlockedSlots.length === 0) return slots;
 
-  // Generate coin level pool for initialChipCount
-  // Levels available: 1 to colorCount (clamped between 1 and 10)
-  const maxColorLevel = Math.max(1, Math.min(10, config.colorCount));
+  // Build raw coin pool directly from chipsPerLevel
   const rawCoins: number[] = [];
+  const chipsMap = config.chipsPerLevel || { "1": 10 };
 
-  for (let i = 0; i < config.initialChipCount; i++) {
-    const coinLevel = prng.nextInt(1, maxColorLevel);
-    rawCoins.push(coinLevel);
+  for (const [lvlStr, count] of Object.entries(chipsMap)) {
+    const lvl = parseInt(lvlStr);
+    const validCount = Math.max(0, count || 0);
+    if (lvl >= 1 && lvl <= 10) {
+      for (let i = 0; i < validCount; i++) {
+        rawCoins.push(lvl);
+      }
+    }
+  }
+
+  // Fallback if empty
+  if (rawCoins.length === 0) {
+    for (let i = 0; i < 10; i++) rawCoins.push(1);
   }
 
   // Distribute coins among unlocked slots
-  // We can respect chipsPerStackRange if applicable, while guaranteeing max slot capacity = 10
   const slotCoinNumbers: number[][] = Array.from({ length: unlockedSlots.length }, () => []);
 
   // Strategy: randomly assign each coin to an unlocked slot that has space (< 10)

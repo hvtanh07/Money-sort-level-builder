@@ -30,12 +30,11 @@ export const JsonManager: React.FC<JsonManagerProps> = ({
     const exportData = {
       levelNumber: config.levelNumber,
       openedStackCount: config.openedStackCount,
-      colorCount: config.colorCount,
-      initialChipCount: config.initialChipCount,
+      chipsPerLevel: config.chipsPerLevel || { "1": 10, "2": 6, "3": 4 },
       dealChipCount: config.dealChipCount,
-      dealMaxChipCount: config.dealMaxChipCount,
+      maxDealChipLevel: config.maxDealChipLevel || 5,
       requiredChipScore: config.requiredChipScore,
-      chipsPerStackRange: config.chipsPerStackRange || { min: 3, max: 8 },
+      chipsPerStackRange: config.chipsPerStackRange || { min: 1, max: 2 },
       randomSeed: config.randomSeed,
       ...(config.mergeScores ? { mergeScores: config.mergeScores } : {}),
       ...(config.lockedSlotIndices ? { lockedSlotIndices: config.lockedSlotIndices } : {})
@@ -93,17 +92,28 @@ export const JsonManager: React.FC<JsonManagerProps> = ({
       const raw = obj as Record<string, unknown>;
       const rawRange = (raw.chipsPerStackRange || {}) as Record<string, unknown>;
 
+      // Parse chipsPerLevel
+      let parsedChipsMap: Record<string, number> = { "1": 10 };
+      if (raw.chipsPerLevel && typeof raw.chipsPerLevel === 'object') {
+        parsedChipsMap = {};
+        for (const [k, v] of Object.entries(raw.chipsPerLevel as Record<string, unknown>)) {
+          const num = Number(v);
+          if (!isNaN(num) && num > 0) {
+            parsedChipsMap[k] = num;
+          }
+        }
+      }
+
       const validConfig: LevelConfig = {
         levelNumber: Number(raw.levelNumber) || 1,
         openedStackCount: Math.min(10, Math.max(1, Number(raw.openedStackCount) || 8)),
-        colorCount: Math.min(10, Math.max(1, Number(raw.colorCount) || 3)),
-        initialChipCount: Math.max(0, Number(raw.initialChipCount) || 20),
+        chipsPerLevel: parsedChipsMap,
         dealChipCount: Math.max(1, Number(raw.dealChipCount) || 5),
-        dealMaxChipCount: Math.max(1, Number(raw.dealMaxChipCount) || 2),
+        maxDealChipLevel: Math.min(10, Math.max(1, Number(raw.maxDealChipLevel) || 5)),
         requiredChipScore: Math.max(10, Number(raw.requiredChipScore) || 100),
         chipsPerStackRange: {
-          min: Number(rawRange.min) || 3,
-          max: Number(rawRange.max) || 8
+          min: Number(rawRange.min) || 1,
+          max: Number(rawRange.max) || 2
         },
         randomSeed: Number(raw.randomSeed) || 12345,
         mergeScores: (raw.mergeScores as LevelConfig['mergeScores']) || DEFAULT_MERGE_SCORES,
@@ -130,7 +140,7 @@ export const JsonManager: React.FC<JsonManagerProps> = ({
           </div>
           <div>
             <h2 className="text-base font-black text-white">JSON Import / Export</h2>
-            <p className="text-xs text-slate-400">Level configuration payload</p>
+            <p className="text-xs text-slate-400">Level configuration payload with chipsPerLevel</p>
           </div>
         </div>
 
